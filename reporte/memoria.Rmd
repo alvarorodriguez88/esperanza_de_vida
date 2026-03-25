@@ -1,0 +1,935 @@
+---
+title: "Análisis de la esperanza de vida y mortalidad a nivel global"
+author: "Álvaro Rodríguez González"
+date: "2024-05-04"
+output: 
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+[Enlace cuadro de mandos](http://10.22.143.222:3838/sample-apps/a2446/prueba.Rmd#section-introducción)
+
+# Estado Actual y Objetivos
+
+El proyecto desarrollado presenta como principal finalidad realizar un análisis exhaustivo acerca de los determinantes y tendencias que influencian la esperanza de vida y la mortalidad a nivel mundial. Es así que se pretende explorar cómo diversos factores (tales como los nutricionales, causas específicas de muerte y elementos económicos o ambientales) han afectado a las métricas estudiadas a lo largo del tiempo.
+
+El enfoque específico abordado ha sido el de identificar y analizar comparativamente los distintos factores que han tenido un impacto histórico en la esperanza de vida y la mortalidad en múltiples regiones del mundo. Al concluir, se presentarán conclusiones que ofrecerán una visión profunda sobre la evolución de estos indicadores de salud a nivel global, proporcionando así un mejor entendimiento de los desafíos y oportunidades para alcanzar una sociedad más saludable y sostenible.
+
+# Aportaciones
+
+Las aportaciones del presente proyecto son significativas en una gran multiplicidad de ámbitos, tales como:
+
+1. **Socioeconómico:** Aportar una mayor comprensión de los factores que afectan la esperanza de vida y la mortalidad es una información crucial para el diseño y la optimización de políticas públicas y estrategias de salud eficaces. Identificar las variables clave permite diseñar intervenciones más efectivas que puedan mejorar la salud general y, por ende, la productividad económica y la calidad de vida de la población.
+
+2. **Técnico:** El proyecto implica el manejo e interpretación de grandes volúmenes de datos, fomentando el uso y desarrollo de técnicas avanzadas de análisis de datos. El uso de herramientas estadísticas avanzadas para detectar patrones y tendencias proporciona insights valiosos, beneficiosos para investigaciones futuras en salud pública.
+
+3. **Científico:** Destaca así el enriquecimiento del conocimiento global sobre los determinantes de la esperanza de vida y la mortalidad. Estas aportaciones pueden influir, como previamente se ha mencionado, en las políticas de salud pública, así como en promover el desarrollo de nuevas técnicas analíticas y las mejoras en la calidad de vida a nivel mundial.
+
+# Desarrollo
+
+### Fuentes de Datos y Análisis de Fiabilidad
+
+- **Our World In Data (OWID):** Se ha seleccionado esta plataforma por su compromiso con la precisión y la transparencia en la recolección de datos de fuentes fiables. Con su uso, se han obtenido datos sobre la esperanza de vida, la mortalidad y las causas de muerte, entre otros. [Recurso aquí](https://ourworldindata.org/)
+
+- **Organización de las Naciones Unidas para la Alimentación y la Agricultura (FAO):** Esta reconocida organización internacional proporciona datos fiables sobre alimentación y nutrición mundial, gracias a su extensa red de colaboradores a nivel mundial.[Recurso aquí](https://www.fao.org/home/en/)
+
+### Análisis Exploratorio Inicial
+
+Los datos empleados en el proyecto requerían inicialmente un preprocesamiento para homogeneizar los códigos de países y, así, facilitar su comparación, dado que las diferencias idiomáticas presentaban desafíos para una correcta integración de los datos.
+
+### Procesamiento y Preparación de Datos
+
+Se han abordado numerosos problemas de depuración y reorganización de datos mediante filtrados avanzados y la unión de tablas utilizando códigos de países. Además, se han ajustado los formatos de fecha necesarios para el análisis mediante funciones específicas.
+
+### Herramientas y Técnicas Utilizadas
+
+- **Visualización Dinámica:** Para el presente proyecto, se ha optado por emplear gráficos dinámicos, que consiguen proporcionar una interacción óptima a la vez que permiten visualizar cambios a lo largo del tiempo de manera más intuitiva que las visualizaciones estáticas.
+
+- **Análisis de Series Temporales:** Se han empleado también series temporales para destacar la evolución de la esperanza de vida y la mortalidad, permitiendo así observar tendencias y patrones a lo largo del tiempo.
+
+
+### Elaboración de un cuadro de mandos a partir de las herramientas de visualización utilizadas en el proyecto.
+
+Para la elaboración del cuadro de mandos, se han utilizado varios conjuntos de datos, entre los que destacan:
+
+- Muertes cada 100.000 personas: Contiene las muertes cada 100.000 personas según el país y el año de registro.
+
+- Muertes según el grupo de edad: Contiene las muertes según el grupo de edad, recién nacidos hasta mayores de 80 años.
+
+- Número de muertes anuales por diferentes causas: Contiene las muertes más comunes globalmente, cada una de ellas con un respectivo número de víctimas anuales.
+
+- Inseguridad alimentaria: Contiene el porcentaje de inseguridad alimentaria por país y año. La seguridad alimentaria corresponde con la situación dada cuando las personas carecen de un acceso seguro a una cantidad suficiente de alimentos inocuos y nutritivos para un correcto crecimiento y desarrollo, así como a una vida activa y sana.
+
+- Esperanza de vida: Contiene los años de vida de un individuo esperados según el país y el año.
+
+- Esperanza de vida según PIB per capita: Contiene los años de vida de un individuo esperados y el GDP per capita en dolares.
+
+- Esperanza de vida según el gasto en sanidad pública: Contiene así el gasto por persona en sanidad pública, según el país y el año. El valor está en dólares.
+
+- Esperanza de vida por sexo: Contiene los años de vida esperados según el sexo, además del año y el país correspondientes.
+
+- Obesidad por países: Muestra el porcentaje de población adulta clasificada como obesa según el país y el año.
+
+- Prevalencia de la subnutrición: Contiene la proporción de la población en estado de subnutrición. Por subnutrición se entiende la condición de las personas cuyo consumo de energía alimentaria se sitúa de forma permanente por debajo de las necesidades mínimas.
+
+- Uso de agua potable mejorada: Datos sobre el porcentaje de personas que hacen uso del agua potable mejorada, según el país y el año.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(flexdashboard)
+if (!require(highcharter)) install.packages('highcharter') 
+library(highcharter) 
+if (!require(fpp3)) install.packages('fpp3') 
+library(fpp3)
+if (!require(RColorBrewer)) install.packages('RColorBrewer') 
+library(RColorBrewer)
+if (!require(openxlsx)) install.packages('openxlsx') 
+library(openxlsx) 
+if (!require(leaflet)) install.packages('leaflet') 
+library(leaflet)  
+if (!require(geojsonio)) install.packages('geojsonio') 
+library(geojsonio) 
+if (!require(plotly)) install.packages('plotly') 
+library(plotly)
+if (!require(ggplot2)) install.packages('ggplot2') 
+library(ggplot2)
+if (!require(tidyverse)) install.packages('tidyverse') 
+library(tidyverse)
+library(shiny)
+```
+
+#### 1. Mapa Esperanza Vida VS Mortalidad
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+life_expectancy <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/life-expectancy.csv") %>%
+  as_tibble()
+
+mortality <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/age-standardized-deaths-from-all-causes.csv") %>% as_tibble()
+
+life_expectancy_by_sex <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/life-expectation-at-birth-by-sex.csv") %>% as_tibble()
+
+geoj <- geojson_read("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/geo_countries.geojson", what = "sp")
+
+life_expectancy <- life_expectancy %>%
+  rename(
+    años.esperados = Period.life.expectancy.at.birth...Sex..all...Age..0
+  )
+
+mortality <- mortality %>%
+  rename(
+    muertes = Deaths...All.causes...Sex..Both...Age..Age.standardized..Rate.
+  )
+
+life_expectancy_by_sex <- life_expectancy_by_sex %>%
+  rename(
+    años.esperados.mujeres = Period.life.expectancy...Sex..female...Age..0,
+    años.esperados.hombres = Period.life.expectancy...Sex..male...Age..0
+  )
+
+life_exp_sum <- life_expectancy %>%
+  group_by(Code, Year) %>%
+  summarise(
+    años.esperados.ambos.sexos = sum(años.esperados)
+  )
+
+mortality_sum <- mortality %>%
+  group_by(Code, Year) %>%
+  summarise(
+    muertes = sum(muertes)
+  )
+
+life_expec_by_sex_sum <- life_expectancy_by_sex %>%
+  group_by(Code, Year) %>%
+  summarise(
+    años.esperados.mujeres = sum(años.esperados.mujeres),
+    años.esperados.hombres = sum(años.esperados.hombres)
+  )
+
+geoj_2 <- geoj %>%
+  as_tibble() %>%
+  left_join(life_exp_sum, join_by(ISO_A3 == Code))
+
+geoj_2 <- geoj_2 %>%
+  left_join(mortality_sum, join_by(ISO_A3 == Code, Year == Year))
+
+geoj_2 <- geoj_2 %>%
+  left_join(life_expec_by_sex_sum, join_by(ISO_A3 == Code, Year == Year))
+
+columnas <- setdiff(names(geoj_2), head(names(geoj_2), 3))
+categoria <- levels(as.factor(columnas))
+#years <- levels(as.factor(geoj_2$Year))
+years <- seq(1990, 2019)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input.año = "2018"
+input.categoria = "muertes"
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+seleccion <- geoj %>%
+  as_tibble() %>%
+  left_join(geoj_2 %>% filter(Year == input.año), by = c("ISO_A3" = "ISO_A3", "ADMIN" = "ADMIN"))
+  
+  etiquetas <- paste("<strong> País: ", seleccion$ADMIN, 
+                   "</strong><br> ", input.categoria, ": ", round(seleccion[[input.categoria]])) %>%
+  lapply(htmltools::HTML)
+
+  pal <- leaflet::colorQuantile("RdPu", seleccion[[input.categoria]], n = 9)
+
+  geoj %>%
+  leaflet::leaflet() %>%
+  leaflet::setView(lng = 5, lat = 22, zoom = 2) %>% 
+  leaflet::addPolygons(label = etiquetas,weight = 0.5, fillColor = ~pal(seleccion[[input.categoria]]), fillOpacity = 0.7) %>% 
+  leaflet::addLegend("bottomleft", pal = pal, values = seleccion[[input.categoria]],
+    title = paste(input.categoria, " en ", input.año) ,
+    labFormat = function(type, cuts, p) {
+          n = length(cuts) 
+          as.character(round((as.integer(cuts)[-n] + as.integer(cuts)[-1])/2))
+        },
+    opacity = 1
+  )
+```
+
+**Conclusión:** El mapa ilustra de manera efectiva las diferencias en la mortalidad/esperanza de vida entre países en un año concreto. Las regiones con una tonalidad más intensa, es decir, los más oscuros (como se observa en las regiones africanas), indican tasas de mortalidad más altas, mientras que las tonalidades más claras representan tasas menores. Este tipo de visualización ayuda a identificar rápidamente patrones globales y regionales en la mortalidad y la esperanza de vida. Además, la interactividad del mapa permite a los usuarios profundizar en los datos de cada país. 
+En este caso en específico, se muestran las muertes cada 100.000 personas en el año 2018 en cada país, representándolas según su intensidad del color. 
+
+#### 2. Barras Esperanza de Vida VS Mortalidad
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+seleccion <- geoj_2 %>%
+    filter(
+      Year == input.año,
+      ADMIN %in% c("Spain", "France", "Germany", "Portugal", "Russia", "United Kingdom", "United States of America")
+    )
+  if (input.categoria == "años.esperados.ambos.sexos"){
+    p <- seleccion %>%
+      group_by(ADMIN) %>%
+      summarise(
+        ADMIN = ADMIN,
+        male = años.esperados.hombres,
+        female = años.esperados.mujeres
+      ) %>%
+      pivot_longer(male:female, names_to = "sex", values_to = "años") %>%
+      ggplot(aes(x=ADMIN,y=años, fill = sex)) +
+        geom_bar(position = "dodge", stat = "identity") +
+        theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  } else if (input.categoria == "años.esperados.hombres"){
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,años.esperados.hombres, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  } else if(input.categoria == "años.esperados.mujeres"){
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,años.esperados.mujeres, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  }else {
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,muertes, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  }
+```
+
+**Conclusión:** El presente gráfico de barras consigue reprensentar el contenido del mapa anterior, teniendo como diferencia principal el mostrar una serie de países predefinidos, siendo estos:
+
+- España
+
+- Francia
+
+- Alemania
+
+- Portugal
+
+- Rusia
+
+- Reino Unido
+
+- Estados Unidos
+
+En este caso en específico, se aprecia cómo las muertes cada 100.000 personas en Rusia en 2018 son mayores que las de los demás países seleccionados, los cuales se mantienen de manera uniforme, con una escasa fluctuación, en el mismo rango, destacando Francia y España como los países con menor mortalidad cada 100.000 personas en 2018.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+mortalidad_por_causa <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/annual-number-of-deaths-by-cause.csv") %>% as_tibble()
+
+mortalidad_por_causa <- mortalidad_por_causa %>%
+  rename(
+    Meningitis = Deaths...Meningitis...Sex..Both...Age..All.Ages..Number.,
+    Alzheimer = Deaths...Alzheimer.s.disease.and.other.dementias...Sex..Both...Age..All.Ages..Number.,
+    Parkinson = Deaths...Parkinson.s.disease...Sex..Both...Age..All.Ages..Number.,
+    Nutritional.deficiencies = Deaths...Nutritional.deficiencies...Sex..Both...Age..All.Ages..Number.,
+    Malaria = Deaths...Malaria...Sex..Both...Age..All.Ages..Number.,
+    Drowning = Deaths...Drowning...Sex..Both...Age..All.Ages..Number.,
+    Interpersonal.violence = Deaths...Interpersonal.violence...Sex..Both...Age..All.Ages..Number.,
+    Maternal.disorders = Deaths...Maternal.disorders...Sex..Both...Age..All.Ages..Number.,
+    HIV.AIDS = Deaths...HIV.AIDS...Sex..Both...Age..All.Ages..Number.,
+    Drug.use.disorders = Deaths...Drug.use.disorders...Sex..Both...Age..All.Ages..Number.,
+    Tuberculosis = Deaths...Tuberculosis...Sex..Both...Age..All.Ages..Number.,
+    Cardiovascular.diseases = Deaths...Cardiovascular.diseases...Sex..Both...Age..All.Ages..Number.,
+    Lower.respiratory.infections = Deaths...Lower.respiratory.infections...Sex..Both...Age..All.Ages..Number.,
+    Neonatal.disorders = Deaths...Neonatal.disorders...Sex..Both...Age..All.Ages..Number.,
+    Alcohol.use.disorders = Deaths...Alcohol.use.disorders...Sex..Both...Age..All.Ages..Number.,
+    Self.harm = Deaths...Self.harm...Sex..Both...Age..All.Ages..Number.,
+    Exposures.to.forces.of.nature = Deaths...Exposure.to.forces.of.nature...Sex..Both...Age..All.Ages..Number.,
+    Diarrheal.diseases = Deaths...Diarrheal.diseases...Sex..Both...Age..All.Ages..Number.,
+    Environmental.heat.and.cold.exposure = Deaths...Environmental.heat.and.cold.exposure...Sex..Both...Age..All.Ages..Number.,
+    Neoplasms = Deaths...Neoplasms...Sex..Both...Age..All.Ages..Number.,
+    Conflict.and.terrorism = Deaths...Conflict.and.terrorism...Sex..Both...Age..All.Ages..Number.,
+    Diabetes.mellitus = Deaths...Diabetes.mellitus...Sex..Both...Age..All.Ages..Number.,
+    Chronic.kidney.disease = Deaths...Chronic.kidney.disease...Sex..Both...Age..All.Ages..Number.,
+    Poisonings = Deaths...Poisonings...Sex..Both...Age..All.Ages..Number.,
+    Protein.energy.malnutrition = Deaths...Protein.energy.malnutrition...Sex..Both...Age..All.Ages..Number.,
+    Road.injuries = Deaths...Road.injuries...Sex..Both...Age..All.Ages..Number.,
+    Chronic.respiratory.diseases = Deaths...Chronic.respiratory.diseases...Sex..Both...Age..All.Ages..Number.,
+    Cirrhosis = Deaths...Cirrhosis.and.other.chronic.liver.diseases...Sex..Both...Age..All.Ages..Number.,
+    Digestive.diseases = Deaths...Digestive.diseases...Sex..Both...Age..All.Ages..Number.,
+    Fire.heat.and.hot.substances = Deaths...Fire..heat..and.hot.substances...Sex..Both...Age..All.Ages..Number.,
+    Acute.hepatitis = Deaths...Acute.hepatitis...Sex..Both...Age..All.Ages..Number.,
+    Measles = Deaths...Measles...Sex..Both...Age..All.Ages..Number.
+  )
+
+mortalidad_por_causa <- mortalidad_por_causa %>%
+  filter(
+    !(Entity %in% c("World Bank High Income", 
+                         "World Bank Low Income", 
+                         "World Bank Lower Middle Income", 
+                         "World Bank Upper Middle Income"))
+  )
+
+causas <- colnames(mortalidad_por_causa[-(1:3)])
+
+definiciones_extensas <- c(
+  "Infección de las membranas que recubren el cerebro y la médula espinal. La meningitis puede ser causada por bacterias, virus u otros microorganismos, y puede ser grave y potencialmente mortal si no se trata adecuadamente.",
+  "Enfermedad neurodegenerativa progresiva que afecta principalmente la memoria, aunque también puede causar dificultades para pensar, comportamientos alterados y otros problemas cognitivos.",
+  "Enfermedad crónica del sistema nervioso que afecta principalmente el movimiento, causando temblores, rigidez muscular y problemas de equilibrio.",
+  "Condiciones médicas causadas por una falta de nutrientes esenciales en la dieta, que pueden llevar a una variedad de problemas de salud, incluidas deficiencias de vitaminas y minerales, y problemas de crecimiento y desarrollo.",
+  "Enfermedad infecciosa transmitida por mosquitos que causa síntomas como fiebre, escalofríos, dolor de cabeza y malestar general. En casos graves, la malaria puede ser potencialmente mortal si no se trata adecuadamente.",
+  "Muerte causada por sumersión en agua, ya sea en piscinas, lagos, ríos u otras fuentes de agua. El ahogamiento puede ocurrir como resultado de accidentes o intentos de suicidio.",
+  "Actos de violencia física que ocurren entre personas, que pueden incluir agresiones, asaltos, homicidios y otros comportamientos violentos. La violencia interpersonal puede ser causada por una variedad de factores, incluidos el alcoholismo, las tensiones familiares y los conflictos.",
+  "Complicaciones médicas relacionadas con el embarazo y el parto, que pueden incluir problemas de hipertensión, hemorragias, infecciones y otras afecciones graves que pueden poner en peligro la vida de la madre y/o el bebé.",
+  "Infección causada por el virus de la inmunodeficiencia humana (VIH), que ataca el sistema inmunológico del cuerpo y puede conducir al síndrome de inmunodeficiencia adquirida (SIDA). El VIH/SIDA puede causar una variedad de problemas de salud graves y puede ser fatal si no se trata adecuadamente.",
+  "Trastornos de salud mental y física causados por el uso de drogas, que pueden incluir adicciones, sobredosis, problemas de salud mental y otros efectos adversos para la salud.",
+  "Enfermedad bacteriana que afecta principalmente a los pulmones, pero también puede afectar otros órganos y tejidos del cuerpo. La tuberculosis puede causar síntomas como tos, fiebre, pérdida de peso y fatiga, y puede ser mortal si no se trata adecuadamente.",
+  "Enfermedades del corazón y los vasos sanguíneos, que pueden incluir afecciones como enfermedad coronaria, insuficiencia cardíaca, arritmias y otras afecciones que afectan la salud cardiovascular. Las enfermedades cardiovasculares son una de las principales causas de muerte en todo el mundo.",
+  "Infecciones que afectan los pulmones y las vías respiratorias inferiores, como la neumonía y la bronquitis. Estas infecciones pueden ser causadas por bacterias, virus u otros microorganismos, y pueden ser graves y potencialmente mortales en casos graves.",
+  "Condiciones médicas que afectan a los recién nacidos durante las primeras semanas de vida, que pueden incluir problemas de desarrollo, infecciones, dificultades respiratorias y otros problemas de salud que pueden ser graves y potencialmente mortales.",
+  "Trastornos físicos y mentales causados por el consumo excesivo de alcohol, que pueden incluir problemas de salud mental, daño orgánico, adicción y otros efectos adversos para la salud. El consumo excesivo de alcohol puede ser una causa importante de enfermedad y muerte en todo el mundo.",
+  "Autolesiones intencionadas, que pueden ser suicidas o no suicidas, y pueden incluir una variedad de comportamientos dañinos como cortarse, quemarse, golpearse o intentar intoxicarse. Las autolesiones pueden ser un signo de problemas de salud mental subyacentes que requieren tratamiento.",
+  "Lesiones y muertes causadas por eventos naturales, como terremotos, tsunamis, huracanes y tornados. Las exposiciones a fuerzas de la naturaleza pueden resultar en daños a la propiedad, lesiones personales y pérdidas de vidas humanas.",
+  "Enfermedades infecciosas que causan diarrea y pueden ser mortales en casos graves, especialmente en niños pequeños y personas con sistemas inmunológicos debilitados. Las enfermedades diarreicas pueden ser causadas por bacterias, virus u otros patógenos y pueden propagarse a través del agua contaminada, los alimentos contaminados y otras formas de transmisión.",
+  "La exposición al calor y al frío ambiental se refiere a situaciones en las que las personas están expuestas a temperaturas extremas, ya sea calor intenso o frío extremo. Esto puede provocar deshidratación, golpes de calor, hipotermia y otras condiciones relacionadas con la temperatura que pueden ser peligrosas para la salud e incluso causar la muerte si no se manejan adecuadamente.",
+  "Las neoplasias, también conocidas como tumores, son crecimientos anormales de células que pueden ser benignos o malignos. Las neoplasias malignas, conocidas como cáncer, pueden crecer y propagarse a otras partes del cuerpo, interfiriendo con el funcionamiento normal de los órganos y sistemas y potencialmente causando la muerte si no se tratan adecuadamente.",
+  "Los conflictos y el terrorismo se refieren a situaciones de violencia política, social o religiosa que pueden resultar en conflictos armados, actos de terrorismo y violencia generalizada. Estos eventos pueden causar lesiones graves, muerte, desplazamiento de personas y daños a la infraestructura, contribuyendo significativamente a la mortalidad en áreas afectadas por conflictos y actos terroristas.",
+  "La diabetes mellitus es una enfermedad crónica que afecta la forma en que el cuerpo utiliza la glucosa en sangre, lo que lleva a niveles elevados de azúcar en la sangre. Puede causar una serie de complicaciones graves, como enfermedad cardiovascular, daño nervioso, problemas de visión, insuficiencia renal y complicaciones en los pies, que pueden aumentar el riesgo de mortalidad si no se controlan adecuadamente.",
+  "La enfermedad renal crónica es una afección en la que los riñones no funcionan correctamente durante un período prolongado. Puede ser causada por enfermedades como la diabetes y la hipertensión, y puede llevar a la acumulación de toxinas en el cuerpo, desequilibrios en los electrolitos y otros problemas de salud graves. En etapas avanzadas, la enfermedad renal crónica puede requerir diálisis o trasplante renal para prolongar la vida.",
+  "Las intoxicaciones ocurren cuando una persona ingiere, inhala, absorbe o entra en contacto con sustancias tóxicas en cantidades suficientes como para causar daño. Estas sustancias pueden ser productos químicos, medicamentos, drogas ilegales o sustancias naturales. Dependiendo del tipo y la cantidad de sustancia involucrada, las intoxicaciones pueden variar desde leves hasta potencialmente mortales.",
+  "La desnutrición por proteínas y energía se refiere a una deficiencia crónica de nutrientes esenciales, especialmente proteínas y calorías, en la dieta. Esto puede deberse a una ingesta insuficiente de alimentos nutritivos, problemas de acceso a alimentos adecuados o condiciones médicas que dificultan la absorción de nutrientes. La desnutrición por proteínas y energía puede provocar un debilitamiento grave del cuerpo, comprometer el sistema inmunológico y aumentar el riesgo de enfermedades y mortalidad.",
+  "Las lesiones de tráfico son lesiones o muertes causadas por accidentes de tráfico, como colisiones de vehículos, atropellos de peatones y choques de motocicletas. Estas lesiones pueden ser el resultado de múltiples factores, como la velocidad, el consumo de alcohol, el uso de dispositivos de seguridad inadecuados y el comportamiento imprudente en la carretera. Las lesiones de tráfico son una de las principales causas de muerte en todo el mundo.",
+  "Las enfermedades respiratorias crónicas son afecciones de los pulmones y las vías respiratorias que persisten durante un período prolongado y que pueden empeorar con el tiempo. Ejemplos comunes incluyen la enfermedad pulmonar obstructiva crónica (EPOC), el asma crónica y la fibrosis pulmonar. Estas enfermedades pueden provocar dificultad para respirar, tos crónica, producción de esputo y deterioro progresivo de la función pulmonar, lo que puede resultar en discapacidad y muerte.",
+  "La cirrosis hepática es una enfermedad crónica del hígado caracterizada por la cicatrización irreversible del tejido hepático. Esto puede ser causado por el consumo excesivo de alcohol, hepatitis crónica, enfermedades autoinmunes u otras condiciones. La cirrosis hepática puede provocar una serie de complicaciones graves, como insuficiencia hepática, hipertensión portal y cáncer de hígado, que pueden ser fatales si no se manejan adecuadamente.",
+  "Las enfermedades digestivas afectan el tracto gastrointestinal, incluyendo el esófago, el estómago, el intestino delgado y el intestino grueso. Estas enfermedades pueden incluir trastornos como la enfermedad por reflujo gastroesofágico (ERGE), la enfermedad inflamatoria intestinal (EII), la enfermedad celíaca, la enfermedad del hígado graso no alcohólico (EHGNA) y otras afecciones que afectan la digestión y la absorción de nutrientes. Dependiendo de la gravedad y el tipo de enfermedad, las complicaciones pueden ser graves y potencialmente mortales.",
+  "Los incendios, el calor y las sustancias calientes pueden provocar quemaduras graves y lesiones que pueden ser potencialmente mortales. Los incendios pueden ocurrir en diferentes entornos, como hogares, lugares de trabajo o espacios públicos, y pueden ser causados por diversos factores, como accidentes eléctricos, descuidos con el fuego, fugas de gas o explosiones. Las quemaduras pueden resultar en daño tisular, infecciones, shock y otras complicaciones que pueden poner en peligro la vida.",
+  "La hepatitis aguda es una inflamación del hígado que generalmente es causada por infecciones virales, aunque también puede ser provocada por ciertos medicamentos, toxinas o enfermedades autoinmunes. Los síntomas pueden incluir fatiga, dolor abdominal, ictericia y malestar general. En casos graves, la hepatitis aguda puede provocar insuficiencia hepática aguda, que puede ser potencialmente mortal si no se trata adecuadamente.",
+  "El sarampión es una enfermedad viral altamente contagiosa que se transmite a través del aire cuando una persona infectada tose o estornuda. Los síntomas incluyen fiebre, tos, secreción nasal, erupción cutánea y malestar general. En casos graves, el sarampión puede causar complicaciones como neumonía, encefalitis (inflamación del cerebro) y, en raras ocasiones, muerte, especialmente en personas con sistemas inmunológicos debilitados."
+)
+
+tabla_causas <- tibble(
+  causa = causas,
+  definicion = definiciones_extensas
+)
+
+```
+
+
+#### 3. Mortalidad por causas
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input.country1 = "World"
+input.year = 2019
+input.cause = "Meningitis"
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+mortalidad_por_causa <- mortalidad_por_causa %>%
+    filter(
+      Entity == input.country1 & Year == input.year
+    ) %>%
+    pivot_longer(Meningitis:Measles, names_to = "causes", values_to = "deaths")
+  
+  pal <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", 
+               "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5", 
+               "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F", 
+               "#E5C494", "#B3B3B3", "#8DD3C7", "#FFEDA0", "#BEBADA", 
+               "#FB8072", "#80B1D3", "#FDB462", "#B3DE69", "#FCCDE5", 
+               "#D9D9D9", "#BC80BD", "#CCEBC5", "#FFED6F", "#1F78B4", 
+               "#33A02C", "#E31A1C", "#FF7F00", "#6A3D9A", "#FFFF99")
+  
+  p <- mortalidad_por_causa %>%
+    ggplot(aes(x= fct_reorder(causes, deaths), y = deaths, fill = causes)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    scale_fill_manual(values = pal) +
+    ylab("Muertes") +
+    xlab("Causas") +
+    theme(legend.position = "none")
+  ggplotly(p)
+```
+
+
+**Conclusión:** El gráfico destaca de manera clara las principales causas de mortalidad. En este caso, está configurado de manera predeterminada a que se muestren causas a nivel global en el año 2019 (sin especificar el país), de manera que aparecen las enfermedades cardiovasculares y los cánceres (neoplasias) encabezando la lista con el mayor número de muertes registradas.
+Además, se resalta la carga de enfermedades crónicas en comparación con las infecciosas y otros tipos de condiciones de salud.
+
+También cabe destacar las causas de mortalidad menos comunes, como conflictos bélicos y actos terroristas, que aunque representan un menor número de muertes, adquieren una relevancia e importancia notorias.
+
+En esta gráfica se presenta la posibilidad de elegir varias de las causas que aparecen en el caso de no conocer lo que son. En ese caso, el proyecto está pensado para proporcionar una precisa definición estándar al usuario.
+
+
+#### 4. Mortalidad por grupos de edad
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+mortalidad_por_grupos <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/annual-death-rates-in-different-age-groups.csv") %>% as_tibble()
+
+mortalidad_por_grupos <- mortalidad_por_grupos %>%
+  rename(
+    Edad_0 = Central.death.rate...Type..period...Sex..both...Age..0,
+    Edad_10 = Central.death.rate...Type..period...Sex..both...Age..10,
+    Edad_25 = Central.death.rate...Type..period...Sex..both...Age..25,
+    Edad_45 = Central.death.rate...Type..period...Sex..both...Age..45,
+    Edad_65 = Central.death.rate...Type..period...Sex..both...Age..65,
+    Edad_80 = Central.death.rate...Type..period...Sex..both...Age..80
+  )
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input.options = "Edad_80"
+input.periodo = c(1750, 2020)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+mortalidad_por_grupos <- mortalidad_por_grupos %>%
+    select(Entity, Year, input.options) %>%
+    filter(input.periodo[1] <= Year & Year <= input.periodo[2]) %>%
+    group_by(Year) %>%
+    summarise(
+      across(all_of(input.options), sum)
+    )
+  
+  p <- mortalidad_por_grupos %>%
+    pivot_longer(input.options, names_to = "Grupo.Edad", values_to = "Muertes") %>%
+    ggplot(aes(x=Year, y=Muertes, color=Grupo.Edad)) +
+    geom_line()
+  
+  ggplotly(p)
+```
+
+
+**Conclusión:** La gráfica superior refleja la mortalidad según los diferentes grupos de edad, siendo estos de 0, 10, 25, 45, 65 y 80 años. En este caso concreto, se muestra cómo el grupo de 80 años es el que más variedad y mortalidad tiene a lo largo de los años. LLama la atención también el gran aumento de la mortalidad en torno a 1950. Tras indagar e investigar acerca de las posibles razones que consigan explicar la anomalía representada en la gráfica, se ha determinado que no parece haber una causa de mayor peso que algunas interpretaciones como:
+
+- La finalización de la Segunda Guerra Mundial en 1945 podría tener consecuencias que afecten a toda la población global en general, produciendo hambrunas, enfermedades y graves crisis económicas debido a los estragos y los gastos de guerra característicos tras un conflicto bélico mundial de tan alto calibre.
+
+- Los datos muestran que ha habido un aumento desmedido de la mortalidad en 1950, pero podría ser a raíz de no haber recopilado bien los datos de las muertes producidas por la Segunda Guerra Mundial.
+
+No obstante, la explicación más lógica señala el tiempo de latencia necesario de registro de muertes de la Segunda Guerra Mundial. Es así que el identificar la identidad de miles de cadáveres y efectuar sus respectivas defunciones puede haber tardado unos pocos años, hecho reflejado en la gráfica.
+
+En el cuadro de mandos es posible elegir cuántos grupos de edad se muestran, además de un 'slider' que permitirá al usuario controlar la línea temporal.
+
+
+
+#### 5. Análisis por países
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+subnutricion <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/prevalence-of-undernourishment.csv") %>% as_tibble()
+
+water <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/water-and-sanitation.csv") %>% as_tibble()
+
+inseguridad_alimentaria_paises <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/inseguridad-alimentaria-paises(millones).csv") %>% as_tibble()
+
+obesidad_paises <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/obesidad-paises.csv") %>% as_tibble()
+
+subnutricion <- subnutricion %>%
+  rename(
+    subnutricion = X2.1.1.Prevalence.of.undernourishment...000000000024000....Value...006121....Percent
+  )
+
+water <- water %>%
+  rename(
+    Uso.de.fuentes.mejoradas.de.agua.potable = Usage.of.improved.drinking.water.sources
+  ) %>%
+  select(
+    Country,
+    Year,
+    Uso.de.fuentes.mejoradas.de.agua.potable
+  )
+
+inseguridad_alimentaria_paises <- inseguridad_alimentaria_paises %>%
+  select(
+    Código.del.área..ISO3.,
+    Año,
+    Valor
+  ) %>%
+  mutate(Valor = as.numeric(Valor))
+
+obesidad_paises <- obesidad_paises %>%
+  select(
+    Código.del.área..ISO3.,
+    Año,
+    Valor
+  )
+
+inseguridad_alimentaria_paises <- inseguridad_alimentaria_paises %>%
+  rename(
+    inseguridad_millones = Valor
+  )
+
+obesidad_paises <- obesidad_paises %>%
+  rename(
+    obesidad_porcentaje = Valor
+  )
+
+años <- strsplit(inseguridad_alimentaria_paises$Año, "-")
+
+año_medio <- sapply(años, function(x){
+  inicio <- as.integer(x[1])
+  fin <- as.integer(x[2])
+  medio <- (inicio + fin) %/% 2
+  return(medio)
+})
+
+inseguridad_alimentaria_paises$Año <- año_medio
+
+life_expectancy2 <- life_expectancy %>%
+  filter(
+    Year >= 2001
+  )
+
+mortality2 <- mortality %>%
+  filter(
+    Year >= 2001
+  )
+
+relacion <- life_expectancy2 %>%
+  left_join(mortality2, by = c("Entity", "Code", "Year"))
+
+relacion <- relacion %>%
+  select(
+    Code,
+    Year,
+    años.esperados,
+    muertes
+  )
+
+sanitation <- subnutricion %>%
+  left_join(water, join_by(Entity == Country, Year == Year))
+
+sanitation <- sanitation %>%
+  left_join(inseguridad_alimentaria_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+sanitation <- sanitation %>%
+  left_join(obesidad_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+sanitation <- sanitation %>%
+  left_join(relacion, join_by(Code == Code, Year == Year))
+
+
+excluded_columns <- c("Entity", "Code", "Year", "years_expected", "deaths")
+excluded_indices <- which(colnames(sanitation) %in% excluded_columns)
+
+```
+
+##### Regresión
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input.x = "subnutricion"
+input.x_scale = "none"
+input.y = "muertes"
+input.y_scale = "none"
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tb <- tibble(
+      country = sanitation$Entity,
+      x = sanitation[[which(names(sanitation)==input.x)]],
+      y = sanitation[[which(names(sanitation)==input.y)]]
+    ) 
+    tb <- tb %>% 
+          filter(is.na(x)!=TRUE & is.na(y)!=TRUE )
+    
+  if(input.x_scale=="sqrt") tb$x <- sqrt(tb$x)
+  if(input.x_scale=="log") tb$x <- log(tb$x)  
+    
+  if(input.y_scale=="log") tb$y <- log(tb$y)  
+  if(input.y_scale=="boxcox"){
+    bc <- boxcox (y ~ x,data=tb)
+    lambda <- round(bc $ x [which.max (bc $ y)],digits=4)
+    if(lambda!=0){
+      tb$y <- tb$y^lambda/lambda
+    } else {
+      tb$y <- log(tb$y)
+    }
+  }
+  
+  fit <- lm(y ~ x,data=tb)
+  a <- fit$coefficients[2]
+  b <- fit$coefficients[1]
+  p <- tb %>%
+        ggplot(aes(x,y,color=country)) + 
+        geom_point() +
+        theme(legend.position = "none") +
+        labs(x= input.x, y= input.y)
+  
+  xmin <- layer_scales(p)$x$get_limits()[1]
+  xmax <- layer_scales(p)$x$get_limits()[2]
+  ymin <- layer_scales(p)$y$get_limits()[1]
+  ymax <- layer_scales(p)$y$get_limits()[2]
+  
+  if(a*xmin+b<ymin) xmin <- (ymin-b)/a
+  if(a*xmin+b>ymax) xmin <- (ymax-b)/a
+  if(a*xmax+b<ymin) xmax <- (ymin-b)/a
+  if(a*xmax+b>ymax) xmax <- (ymax-b)/a
+  
+  df <- data.frame(x1 = xmin, x2 = xmax, y1 = a*xmin+b, y2 = a*xmax+b)
+  
+  p2 <- p +
+        geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2, color = "blue"), data = df)
+  ggplotly(p2)
+```
+
+##### Tabla de valores
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tibble(
+      country = sanitation$Entity,
+       indicator1 = sanitation[[which(names(sanitation)==input.x)]],
+       indicator2 = sanitation[[which(names(sanitation)==input.y)]]
+    ) %>% 
+      filter(is.na(indicator1)!=TRUE & is.na(indicator2)!=TRUE ) %>%
+      arrange(desc(indicator1)) %>%
+      #setNames(c("country",paste("highest_",input$x),input$y))  %>%
+      head(300)
+```
+
+##### Representación de valores
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+data <- tibble(
+    country = sanitation$Entity,
+       indicator1 = sanitation[[which(names(sanitation)==input.x)]],
+       indicator2 = sanitation[[which(names(sanitation)==input.y)]],
+       year = sanitation[[which(names(sanitation)=="Year")]]
+  )
+  
+  data <- data %>% 
+    filter(!is.na(indicator1)) %>% 
+    arrange(desc(indicator1))
+  
+  top_countries <- unique(data$country)[1:5]
+  
+  data_for_boxplot <- data %>% 
+    filter(country %in% top_countries)
+  
+  p <- data_for_boxplot %>%
+    ggplot(aes(x=country, y=indicator1, fill = country, label = year)) +
+    geom_boxplot(outlier.shape = NA) +
+    geom_jitter(shape=16, position=position_jitter(0.2))+
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  ggplotly(p)
+```
+
+**Conclusión:** Esta gráfica muestra la relación que existe entre la mortalidad o la esperanza de vida y varios factores como la subnutrición, obesidad, uso de agua potable mejorada y la inseguridad alimentaria.
+
+En este caso en concreto, se aprecia cómo existe una relación entre la subnutrición y la mortalidad global, concluyendo con que, a medida que el porcentaje de subnutrición del país es mayor, aumentan las muertes cada 100.000 personas de manera directamente proporcional.
+
+En el cuadro de mandos se muestran 2 desplegables para elegir las variables a comparar, además de la opción de escalado para observar cómo influye este en la relación. Por otro lado, también aparece una tabla con los valores de cada indicador, además de un gráfico de cajas que muestra los 5 países con mayor valor en el primer indicador.
+
+Como se puede apreciar, los 5 países con mayor subnutrición son Angola, Haiti, Madagascar, Somalia y Zambia. Cabe destacar cómo Haití y Madagascar fluctúan de manera similar sobre el mismo rango, teniendo una media con un gran parentesco. Resalta Somalia como la que mayor media tiene y Angola como la que menos. Es así que, con un análisis de la gráfica, se puede concluir que el continente con una mayor muerte por subnutrición es África, con la excepción de Haití, situado en el Caribe.
+
+
+#### 6. Comparación
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+life_expectancy_gdp_pc <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/life-expectancy-vs-gdp-per-capita.csv") %>% as_tibble()
+
+life_exp_inv_public_heatlh <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/life-expectancy-vs-healthcare-expenditure.csv") %>% as_tibble()
+
+life_expectancy <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/esperanza_de_vida/life-expectancy.csv") %>% as_tibble()
+
+mortality <- read.csv("C:/Users/alvar/Desktop/Universidad/02 - AÑO2/Semestre-2/01-AEDV/TrabajoFinCurso/data/mortalidad/age-standardized-deaths-from-all-causes.csv") %>% as_tibble()
+
+life_exp_inv_public_heatlh <- life_exp_inv_public_heatlh %>%
+  rename(
+    inversion = Current.health.expenditure.per.capita..PPP..current.international...
+  )
+
+life_expectancy <- life_expectancy %>%
+  rename(
+    years_expected = Period.life.expectancy.at.birth...Sex..all...Age..0
+  )
+
+mortality <- mortality %>%
+  rename(
+    deaths = Deaths...All.causes...Sex..Both...Age..Age.standardized..Rate.
+  )
+
+life_expectancy_gdp_pc_select <- life_expectancy_gdp_pc %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    GDP.per.capita
+  )
+
+life_inv_health_select <- life_exp_inv_public_heatlh %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    inversion
+  )
+
+total <- life_expectancy_gdp_pc_select %>%
+  as_tibble() %>%
+  left_join(life_inv_health_select, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  left_join(life_expectancy, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  left_join(mortality, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  filter(Year >= 2000)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+countries <- levels(as.factor(total$Entity))
+categoria1 <- c("GDP.per.capita", "inversion")
+categoria2 <- c("years_expected", "deaths")
+years1 <- levels(as.factor(total$Year))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input.country.1 = "Spain"
+input.country2 = "Germany"
+input.category1 = "GDP.per.capita"
+input.category2 = "years_expected"
+input.yearinit = 2012
+input.yearend = 2019
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+if(input.category1=="GDP.per.capita"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  GDP.per.capita = total$GDP.per.capita,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input.country.1) %>%
+    filter(Year >= input.yearinit & Year <= input.yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = GDP.per.capita, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("green"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  inversion = total$inversion,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input.country.1) %>%
+    filter(Year >= input.yearinit & Year <= input.yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = inversion, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("teal"))
+}
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+if(input.category2=="years_expected"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  years_expected = total$years_expected,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input.country.1) %>%
+    filter(Year >= input.yearinit & Year <= input.yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = years_expected, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("lightpink"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  deaths = total$deaths,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input.country.1) %>%
+    filter(Year >= input.yearinit & Year <= input.yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = deaths, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("red"))
+}
+```
+
+
+**Conclusión:** En esta sección del proyecto se pretende comparar los datos de la mortalidad y de la esperanza de vida en relación a factores como el PIB per cápita y la inversión en salud pública de cada país por persona (media), reflejando así la relación entre inversión en sanidad pública y el capital de una sociedad determinada.
+
+En este caso específico, se puede apreciar cómo en la gráfica superior (de color verde) destaca un máximo en el PIB en 2015, seguido de un notorio descenso en 2016. Sin embargo, en lo que respecta a la esperanza de vida (gráfica inferior de color rosado) hay una progreso aparentemente contínuo, lo cual parece indicar que, en un corto perído de tiempo, el PIB no influye de manera significativa en la esperanza de vida del país. No obstante, sí destaca un ligero aumento proporcional entre ambas variables a medida que se expande el plazo de tiempo, lo que parece indicar una estrecha relación entre ambas. Se deduce así que un mayor poder adquisitivo es sinónimo de una mayor calidad de vida, que lógicamente consigue aumentar la esperanza de vida de una sociedad en concreto.
+
+En el cuadro de mandos es posible elegir el factor a comparar con la mortalidad y la esperanza de vida, siendo estos la inversión en salud y el PIB per cápita.
+
+#### 7. Análisis de atributos
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+life_expectancy3 <- life_expectancy %>%
+  filter(Year >= 2000)
+
+mortality3 <- mortality %>%
+  filter(Year >= 2000)
+
+inversion_salud <- life_exp_inv_public_heatlh %>%
+  filter(Year >= 2000) %>%
+  rename(
+    inversion.en.salud.publica = inversion
+  ) %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    inversion.en.salud.publica
+  )
+
+gdp.per.capita <- life_expectancy_gdp_pc %>%
+  filter(Year >= 2000) %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    GDP.per.capita
+  )
+
+total1 <- life_expectancy3 %>%
+  left_join(mortality3, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(subnutricion, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(inseguridad_alimentaria_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+total1 <- total1 %>%
+  left_join(inversion_salud, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(obesidad_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+total1 <- total1 %>%
+  left_join(water, join_by(Entity == Country, Year == Year))
+
+total1 <- total1 %>%
+  left_join(gdp.per.capita, join_by(Entity == Entity, Code == Code, Year == Year))
+```
+
+##### Matriz de correlación 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+total1 %>%
+    select(-Entity, -Code, -Year) %>%
+    cor(use = 'complete.obs') %>%
+    hchart()
+```
+
+**Conclusión:** En la gráfica es posible observar correlaciones positivas y negativas. Entre ellas llama la atención la lógica correlación negativa que existe entre los años esperados de vida y las muertes, esto indica que a medida que uno crece, el otro decrece en una proporción muy parecida.
+
+Por un lado, existe una correlación positiva entre el uso de agua potable y la esperanza de vida, lo que conduce a pensar que el consumo de agua potable es bastante influyente en la mejora de la calidad de vida de una población y que, por ende, consigue aumentar la esperanza de vida.
+
+Además, otra correlación positiva relevante es la que existe entre la inversión en salud pública y el GDP per capita, lo cual puede llevar a pensar que a medida que las personas tienen mayores capacidades económicas, deciden invertir en mejoras correspondientes a la sanidad pública.
+
+Por otro lado, un rasgo a destacar sobre la matriz de correlación es cómo la variable que no tiene correlación con las demás, o al menos es muy baja en comparación, es la de inseguridad alimentaria, dando a suponer que el hecho de que las personas no tengan disponibilidad a comida saludable o segura no se ve afectada en gran medida por ninguna de las demás variables.
+
+
+##### Componentes Principales
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+total11 <- total1 %>%
+  group_by(Entity) %>%
+  summarise_at(vars(-Code, -Year), mean, na.rm = TRUE) %>%
+  column_to_rownames(var="Entity")
+
+total11 <- na.omit(total11)
+
+pca <- prcomp(total11, scale = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+p <- tibble(
+    label=paste("PC",1:length(pca$sdev)),
+    varPercent = pca$sdev^2/sum(pca$sdev^2) * 100
+) %>%
+  ggplot(aes(x=label,y=varPercent)) + 
+    geom_bar(stat = "identity") +
+    labs(x= "Componentes Principales", 
+         y= "Porcentaje varianza explicada")
+ggplotly(p)
+
+```
+
+**Conclusión:** En el gráfico superior se muestra el porcentaje de varianza explicada de cada una de las componentes principales. Basándonos en la premisa de descartar aquella variable que sea menor que el 2%, es posible deshacerse de las 2 últimas componentes principales.La primera componente, por el contrario, parece englobar y abarcar la gran mayoría, con casi un 65% de varianza explicada. A partir de ello bajan las demás componentes principales.
+
+
+##### Diagrama de dispersión
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+hchart(pca)
+```
+
+**Conclusiones:** En el diagrama de dispersión se representa el peso que tiene cada variable en las 2 primeras componentes principales, siendo un vector horizontal una variable que tiene mucho peso en la primera componente y nada en la segunda, y un vector vertical justamente lo contrario, todo el peso en la segunda y nada en la primera.
+
+En este caso en particular, los países se pueden discriminar relativamente bien por la primera y segunda componente principal, ya que estos están relativamente dispersos entre sí. El vector que llama la atención es el de inseguridad alimentaria, el cual tiene mucho peso en la segunda componente principal, ya que es casi vertical y grande en cuanto a su dimensión. 
+
+Por otro lado, la variable de obesidad por país tiene mayor peso sobre la primera componente, pero no demasiado puesto que su longitud no es de una gran tamaño, comparativamente.
+
+
+### Conclusiones Generales
+
+El proyecto de análisis e investigación a nivel mundial presentado proporciona una visión integral de los factores que afectan la mortalidad y la esperanza de vida de manera global. Así, a través de las diferentes gráficas y representaciones, se ha logrado de manera eficiente ilustrar cómo diferentes factores socioeconómicos y de salud pública están correlacionados con la esperanza de vida y las tasas de mortalidad en diversos países.
+
+#### Factores Principales que Influyen en la Esperanza de Vida y la Mortalidad
+
+##### Factores Socioeconómicos:
+**PIB per cápita e Inversión en Salud Pública:** La interpretación exhaustiva de las gráficas proporcionadas indica que, a pesar de que el PIB per cápita presente fluctuaciones anuales que no parecen reflejar cambios inmediatos en la esperanza de vida de una población, la inversión en salud pública y los factores económicos a largo plazo sí juegan un papel crucial en aumentar proporcionalmente la esperanza de vida de la población determinada.
+
+##### Condiciones de Salud y Nutrición:
+**Desnutrición y Obesidad:** La relación entre la subnutrición y la esperanza de vida y la mortalidad es significativa. Sin embargo, la obesidad no parece destacar como un factor tan relevante comparativamente. No obstante, es de gran importancia considerar el impacto y la relación que podría tener en las enfermedades a largo plazo, que sí influyen directamente en la mortalidad y la esperanza de vida.
+
+##### Acceso a Recursos Básicos:
+**Uso de Agua Potable Mejorada:** La correlación positiva entre el acceso al agua potable y la esperanza de vida subraya la importancia de los recursos básicos en la mejora de las condiciones de vida y la reducción de enfermedades transmisibles. Una mayor calidad de consumo implica de manera inherente una mayor calidad de vida, que se ve reflejada en el aumento directamente proporcional de la esperanza de vida de una población concreta.
+
+##### Enfermedades y Condiciones Médicas:
+**Enfermedades Cardiovasculares y Cáncer:** Estas condiciones son las principales causas de muerte a nivel global, representan una carga significativa para la salud pública. Así, se destaca y se alude a la necesidad y el requerimiento de la inversión en políticas de prevención y tratamientos efectivos contar dichas patologías, con la intención de aumentar la esperanza de vida a nivel mundial.
+
+##### Hipótesis:
+**Efectos a Largo Plazo de la Segunda Guerra Mundial y Recopilación de Datos en 1950:** Un aumento notable en la mortalidad en 1950 en todos los grupos de edad lleva a la hipótesis de que los sucesos aislados y particulares de grandes y masivas atrocidades y conflictos bélicos a gran escala, como la Segunda Guerra Mundial, presentan la capacidad de impactar en gran medida en el transcurso de la historia inminentemente a continuación, teniendo así repercusiones prolongadas a lo largo del tiempo, que se irán estabilizando progresivamente. Las anomalías reflejadas, como grandes genocidios o desastres a nivel global, son capaces de alterar así las gráficas y la recopilación de datos.
+
+#### Reflexión final acerca del estudio del proyecto.
+
+El proyecto de análisis, estudio e investigación subraya las variaciones regionales y las influencias significativas de los factores económicos, sanitarios y de acceso a recursos básicos en la esperanza de vida y las tasas de mortalidad a nivel mundial a lo largo de los años. Al destacar la relación entre estos factores, el proyecto consigue proporcionar una visión profunda y analítica sobre cómo las intervenciones estratégicas y los ajustes en políticas públicas puedan influir decisivamente en la salud pública y el bienestar general, aumentando la calidad y la esperanza de vida a nivel global.
+
+Por otra parte, los análisis detallados ofrecidos en este estudio no sólo permiten a los responsables de la formulación de políticas identificar áreas críticas y necesitadas de intervención e inversión, sino que también facilitan a las comunidades y a los individuos la comprensión de cómo los cambios en prácticas sanitarias y económicas presentan la capacidad de tener un impacto duradero en su calidad de vida y, por ende, en su longevidad. Este estudio invita a una reflexión sobre la importancia de adoptar hábitos saludables y políticas que consideren las especificidades regionales y culturales para fomentar una mejora en las condiciones de vida globales.
+
+Cabe destacar la relevancia del proyecto en el ámbito ético y moral al mostrar las atroces consecuencias derivadas de la contienda de guerras masivas y genocidios a gran escala. La mortalidad y el descenso de la calidad de vida en todos los sentidos parecen estar intrínsecamente relacionados a la guerra, reflejando así cómo el conflicto tan solo deriva en el sufrimiento humano a nivel mundial.
+
+De esta manera, el presente estudio ha efectuado de manera óptima su objetivo de informar e interpretar las grandes cantidades de datos, además de inspirar acción y compromiso, proporcionando una base para el debate y el desarrollo de estrategias que aborden de manera efectiva los desafíos en salud y mortalidad que enfrentan diversas poblaciones alrededor del mundo, así como un enfoque objetivo y analítico de las consecuencias inherentes a la guerra. Destacan también las variaciones regionales en base a los factores económicos, sanitarios y de recursos que más influyen en la esperanza de vida así como en la mortalidad a nivel global y a lo largo de los años, mostrando el sendero a una multiplicidad heterogénea de puntos de vista sobre cómo se podrían abordar y modificar ciertas políticas o hábitos para la mejora de la sociedad, que enriquecerán el desarrollo de un mundo utópico que vele por el bienestar general de la población global.
+
+

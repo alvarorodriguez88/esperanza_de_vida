@@ -1,0 +1,1134 @@
+---
+title: "Esperanza de Vida y Mortalidad Mundial"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    source_code: embed
+    theme: cosmo
+    css: styles2.css
+runtime: shiny
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = FALSE
+)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(flexdashboard)
+if (!require(highcharter)) install.packages('highcharter') 
+library(highcharter) 
+if (!require(fpp3)) install.packages('fpp3') 
+library(fpp3)
+if (!require(RColorBrewer)) install.packages('RColorBrewer') 
+library(RColorBrewer)
+if (!require(openxlsx)) install.packages('openxlsx') 
+library(openxlsx) 
+if (!require(leaflet)) install.packages('leaflet') 
+library(leaflet)  
+if (!require(geojsonio)) install.packages('geojsonio') 
+library(geojsonio) 
+if (!require(plotly)) install.packages('plotly') 
+library(plotly)
+if (!require(ggplot2)) install.packages('ggplot2') 
+library(ggplot2)
+if (!require(tidyverse)) install.packages('tidyverse') 
+library(tidyverse)
+library(shiny)
+#library(MASS)
+```
+
+# Introducción
+
+<div style="padding: 20px; background-color: #f9f9f9; border-left: 5px solid #31708f; margin-bottom: 20px;">
+  <h2>Introducción</h2>
+  <p>En este dashboard exploraremos cómo la esperanza de vida y las tasas de mortalidad han evolucionado a nivel global a lo largo de los años. Investigaremos diversos factores que influyen en estos indicadores, como las causas de la mortalidad, uso de agua potable, seguridad alimentaria...</p>
+  <p>El análisis proporcionado busca ofrecer una visión comprensiva sobre cómo distintas regiones han progresado o enfrentado desafíos en estos aspectos, permitiendo a los usuarios obtener datos representativos y contextualizados en escenarios globales.</p>
+</div>
+<div style="padding: 20px; background-color: #ffffff; border-left: 5px solid #31708f; border: 1px solid #ddd; margin-bottom: 20px;">
+  <h3>Objetivos del Dashboard</h3>
+  <ul>
+    <li>Visualizar las tendencias de la esperanza de vida a nivel mundial.</li>
+    <li>Analizar las causas principales de mortalidad y cómo han cambiado con el tiempo.</li>
+    <li>Examinar el impacto de diferentes factores como el desarrollo económico y las condiciones alimantarias     en la esperanza de vida y la mortalidad.</li>
+  </ul>
+</div>
+
+<div style="padding: 20px; background-color: #eef; border-left: 5px solid #33c3f0; margin-bottom: 20px;">
+  <h4>Fuentes de Datos</h4>
+  <p>Los datos utilizados en este análisis provienen de fuentes confiables, incluyendo OWID (Our World In Data), FAO (Organización de las Naciones Unidas para la Alimentación y la Agricultura).</p>
+</div>
+<div style="padding: 20px; background-color: #feffe6; border-left: 5px solid #ffeb3b; margin-bottom: 20px;">
+  <h4>Técnicas Estadísticas</h4>
+  <p>Utilizamos técnicas de visualización de datos avanzadas para interpretar y presentar los datos de manera que sean accesibles para todos los usuarios.</p>
+</div>
+
+```{r}
+life_expectancy <- read.csv("life-expectancy.csv") %>%
+  as_tibble()
+
+mortality <- read.csv("age-standardized-deaths-from-all-causes.csv") %>% as_tibble()
+
+life_expectancy_by_sex <- read.csv("life-expectation-at-birth-by-sex.csv") %>% as_tibble()
+
+geoj <- geojson_read("geo_countries.geojson", what = "sp")
+
+life_expectancy <- life_expectancy %>%
+  rename(
+    años.esperados = Period.life.expectancy.at.birth...Sex..all...Age..0
+  )
+
+mortality <- mortality %>%
+  rename(
+    muertes = Deaths...All.causes...Sex..Both...Age..Age.standardized..Rate.
+  )
+
+life_expectancy_by_sex <- life_expectancy_by_sex %>%
+  rename(
+    años.esperados.mujeres = Period.life.expectancy...Sex..female...Age..0,
+    años.esperados.hombres = Period.life.expectancy...Sex..male...Age..0
+  )
+
+life_exp_sum <- life_expectancy %>%
+  group_by(Code, Year) %>%
+  summarise(
+    años.esperados.ambos.sexos = sum(años.esperados)
+  )
+
+mortality_sum <- mortality %>%
+  group_by(Code, Year) %>%
+  summarise(
+    muertes = sum(muertes)
+  )
+
+life_expec_by_sex_sum <- life_expectancy_by_sex %>%
+  group_by(Code, Year) %>%
+  summarise(
+    años.esperados.mujeres = sum(años.esperados.mujeres),
+    años.esperados.hombres = sum(años.esperados.hombres)
+  )
+
+geoj_2 <- geoj %>%
+  as_tibble() %>%
+  left_join(life_exp_sum, join_by(ISO_A3 == Code))
+
+geoj_2 <- geoj_2 %>%
+  left_join(mortality_sum, join_by(ISO_A3 == Code, Year == Year))
+
+geoj_2 <- geoj_2 %>%
+  left_join(life_expec_by_sex_sum, join_by(ISO_A3 == Code, Year == Year))
+
+columnas <- setdiff(names(geoj_2), head(names(geoj_2), 3))
+categoria <- levels(as.factor(columnas))
+#years <- levels(as.factor(geoj_2$Year))
+years <- seq(1990, 2019)
+```
+
+
+Esperanza de Vida VS Mortalidad
+==================================
+
+Column {.sidebar data-width=270}
+--------------------------------------------------
+
+```{r}
+selectInput(
+  "año",
+  label = "AÑO:",
+  choices = years,
+  selected = "2018"
+)
+```
+
+```{r}
+selectInput(
+  "categoria",
+  label = "CATEGORIA:",
+  choices = categoria,
+  selected = "muertes"
+)
+```
+
+###
+
+**TABLA**
+
+```{r}
+renderTable({
+  seleccion <- geoj %>%
+  as_tibble() %>%
+  left_join(geoj_2 %>% filter(Year == input$año), by = c("ISO_A3" = "ISO_A3", "ADMIN" = "ADMIN"))
+  
+  print(seleccion[, c("ADMIN", input$categoria)])
+})
+```
+
+Column {.tabset}
+--------------------------------------------------
+
+### Mapa Esperanza Vida VS Mortalidad
+
+```{r}
+leaflet::renderLeaflet({
+  
+  seleccion <- geoj %>%
+  as_tibble() %>%
+  left_join(geoj_2 %>% filter(Year == input$año), by = c("ISO_A3" = "ISO_A3", "ADMIN" = "ADMIN"))
+  
+  etiquetas <- paste("<strong> País: ", seleccion$ADMIN, 
+                   "</strong><br> ", input$categoria, ": ", round(seleccion[[input$categoria]])) %>%
+  lapply(htmltools::HTML)
+
+pal <- leaflet::colorQuantile("RdPu", seleccion[[input$categoria]], n = 9)
+
+geoj %>%
+  leaflet::leaflet() %>%
+  leaflet::setView(lng = 5, lat = 22, zoom = 2) %>% 
+  leaflet::addPolygons(label = etiquetas,weight = 0.5, fillColor = ~pal(seleccion[[input$categoria]]), fillOpacity = 0.7) %>% 
+  leaflet::addLegend("bottomleft", pal = pal, values = seleccion[[input$categoria]],
+    title = paste(input$categoria, " en ", input$año) ,
+    labFormat = function(type, cuts, p) {
+          n = length(cuts) 
+          as.character(round((as.integer(cuts)[-n] + as.integer(cuts)[-1])/2))
+        },
+    opacity = 1
+  )
+})
+```
+
+### Barras Esperanza de Vida VS Mortalidad
+
+```{r}
+renderPlotly({
+  seleccion <- geoj_2 %>%
+    filter(
+      Year == input$año,
+      ADMIN %in% c("Spain", "France", "Germany", "Portugal", "Russia", "United Kingdom", "United States of America")
+    )
+  if (input$categoria == "años.esperados.ambos.sexos"){
+    p <- seleccion %>%
+      group_by(ADMIN) %>%
+      summarise(
+        ADMIN = ADMIN,
+        male = años.esperados.hombres,
+        female = años.esperados.mujeres
+      ) %>%
+      pivot_longer(male:female, names_to = "sex", values_to = "años") %>%
+      ggplot(aes(x=ADMIN,y=años, fill = sex)) +
+        geom_bar(position = "dodge", stat = "identity") +
+        theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  } else if (input$categoria == "años.esperados.hombres"){
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,años.esperados.hombres, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  } else if(input$categoria == "años.esperados.mujeres"){
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,años.esperados.mujeres, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  }else {
+    p <- seleccion %>%
+      ggplot(aes(ADMIN,muertes, fill = ADMIN)) +
+      geom_bar(stat = "identity") +
+      theme( axis.text.x = element_text(angle = 60,hjust=1))
+    
+    ggplotly(p, tooltip = "y")
+  }
+})
+```
+
+```{r}
+
+mortalidad_por_causa <- read.csv("annual-number-of-deaths-by-cause.csv") %>% as_tibble()
+
+mortalidad_por_causa <- mortalidad_por_causa %>%
+  rename(
+    Meningitis = Deaths...Meningitis...Sex..Both...Age..All.Ages..Number.,
+    Alzheimer = Deaths...Alzheimer.s.disease.and.other.dementias...Sex..Both...Age..All.Ages..Number.,
+    Parkinson = Deaths...Parkinson.s.disease...Sex..Both...Age..All.Ages..Number.,
+    Nutritional.deficiencies = Deaths...Nutritional.deficiencies...Sex..Both...Age..All.Ages..Number.,
+    Malaria = Deaths...Malaria...Sex..Both...Age..All.Ages..Number.,
+    Drowning = Deaths...Drowning...Sex..Both...Age..All.Ages..Number.,
+    Interpersonal.violence = Deaths...Interpersonal.violence...Sex..Both...Age..All.Ages..Number.,
+    Maternal.disorders = Deaths...Maternal.disorders...Sex..Both...Age..All.Ages..Number.,
+    HIV.AIDS = Deaths...HIV.AIDS...Sex..Both...Age..All.Ages..Number.,
+    Drug.use.disorders = Deaths...Drug.use.disorders...Sex..Both...Age..All.Ages..Number.,
+    Tuberculosis = Deaths...Tuberculosis...Sex..Both...Age..All.Ages..Number.,
+    Cardiovascular.diseases = Deaths...Cardiovascular.diseases...Sex..Both...Age..All.Ages..Number.,
+    Lower.respiratory.infections = Deaths...Lower.respiratory.infections...Sex..Both...Age..All.Ages..Number.,
+    Neonatal.disorders = Deaths...Neonatal.disorders...Sex..Both...Age..All.Ages..Number.,
+    Alcohol.use.disorders = Deaths...Alcohol.use.disorders...Sex..Both...Age..All.Ages..Number.,
+    Self.harm = Deaths...Self.harm...Sex..Both...Age..All.Ages..Number.,
+    Exposures.to.forces.of.nature = Deaths...Exposure.to.forces.of.nature...Sex..Both...Age..All.Ages..Number.,
+    Diarrheal.diseases = Deaths...Diarrheal.diseases...Sex..Both...Age..All.Ages..Number.,
+    Environmental.heat.and.cold.exposure = Deaths...Environmental.heat.and.cold.exposure...Sex..Both...Age..All.Ages..Number.,
+    Neoplasms = Deaths...Neoplasms...Sex..Both...Age..All.Ages..Number.,
+    Conflict.and.terrorism = Deaths...Conflict.and.terrorism...Sex..Both...Age..All.Ages..Number.,
+    Diabetes.mellitus = Deaths...Diabetes.mellitus...Sex..Both...Age..All.Ages..Number.,
+    Chronic.kidney.disease = Deaths...Chronic.kidney.disease...Sex..Both...Age..All.Ages..Number.,
+    Poisonings = Deaths...Poisonings...Sex..Both...Age..All.Ages..Number.,
+    Protein.energy.malnutrition = Deaths...Protein.energy.malnutrition...Sex..Both...Age..All.Ages..Number.,
+    Road.injuries = Deaths...Road.injuries...Sex..Both...Age..All.Ages..Number.,
+    Chronic.respiratory.diseases = Deaths...Chronic.respiratory.diseases...Sex..Both...Age..All.Ages..Number.,
+    Cirrhosis = Deaths...Cirrhosis.and.other.chronic.liver.diseases...Sex..Both...Age..All.Ages..Number.,
+    Digestive.diseases = Deaths...Digestive.diseases...Sex..Both...Age..All.Ages..Number.,
+    Fire.heat.and.hot.substances = Deaths...Fire..heat..and.hot.substances...Sex..Both...Age..All.Ages..Number.,
+    Acute.hepatitis = Deaths...Acute.hepatitis...Sex..Both...Age..All.Ages..Number.,
+    Measles = Deaths...Measles...Sex..Both...Age..All.Ages..Number.
+  )
+
+mortalidad_por_causa <- mortalidad_por_causa %>%
+  filter(
+    !(Entity %in% c("World Bank High Income", 
+                         "World Bank Low Income", 
+                         "World Bank Lower Middle Income", 
+                         "World Bank Upper Middle Income"))
+  )
+
+causas <- colnames(mortalidad_por_causa[-(1:3)])
+
+definiciones_extensas <- c(
+  "Infección de las membranas que recubren el cerebro y la médula espinal. La meningitis puede ser causada por bacterias, virus u otros microorganismos, y puede ser grave y potencialmente mortal si no se trata adecuadamente.",
+  "Enfermedad neurodegenerativa progresiva que afecta principalmente la memoria, aunque también puede causar dificultades para pensar, comportamientos alterados y otros problemas cognitivos.",
+  "Enfermedad crónica del sistema nervioso que afecta principalmente el movimiento, causando temblores, rigidez muscular y problemas de equilibrio.",
+  "Condiciones médicas causadas por una falta de nutrientes esenciales en la dieta, que pueden llevar a una variedad de problemas de salud, incluidas deficiencias de vitaminas y minerales, y problemas de crecimiento y desarrollo.",
+  "Enfermedad infecciosa transmitida por mosquitos que causa síntomas como fiebre, escalofríos, dolor de cabeza y malestar general. En casos graves, la malaria puede ser potencialmente mortal si no se trata adecuadamente.",
+  "Muerte causada por sumersión en agua, ya sea en piscinas, lagos, ríos u otras fuentes de agua. El ahogamiento puede ocurrir como resultado de accidentes o intentos de suicidio.",
+  "Actos de violencia física que ocurren entre personas, que pueden incluir agresiones, asaltos, homicidios y otros comportamientos violentos. La violencia interpersonal puede ser causada por una variedad de factores, incluidos el alcoholismo, las tensiones familiares y los conflictos.",
+  "Complicaciones médicas relacionadas con el embarazo y el parto, que pueden incluir problemas de hipertensión, hemorragias, infecciones y otras afecciones graves que pueden poner en peligro la vida de la madre y/o el bebé.",
+  "Infección causada por el virus de la inmunodeficiencia humana (VIH), que ataca el sistema inmunológico del cuerpo y puede conducir al síndrome de inmunodeficiencia adquirida (SIDA). El VIH/SIDA puede causar una variedad de problemas de salud graves y puede ser fatal si no se trata adecuadamente.",
+  "Trastornos de salud mental y física causados por el uso de drogas, que pueden incluir adicciones, sobredosis, problemas de salud mental y otros efectos adversos para la salud.",
+  "Enfermedad bacteriana que afecta principalmente a los pulmones, pero también puede afectar otros órganos y tejidos del cuerpo. La tuberculosis puede causar síntomas como tos, fiebre, pérdida de peso y fatiga, y puede ser mortal si no se trata adecuadamente.",
+  "Enfermedades del corazón y los vasos sanguíneos, que pueden incluir afecciones como enfermedad coronaria, insuficiencia cardíaca, arritmias y otras afecciones que afectan la salud cardiovascular. Las enfermedades cardiovasculares son una de las principales causas de muerte en todo el mundo.",
+  "Infecciones que afectan los pulmones y las vías respiratorias inferiores, como la neumonía y la bronquitis. Estas infecciones pueden ser causadas por bacterias, virus u otros microorganismos, y pueden ser graves y potencialmente mortales en casos graves.",
+  "Condiciones médicas que afectan a los recién nacidos durante las primeras semanas de vida, que pueden incluir problemas de desarrollo, infecciones, dificultades respiratorias y otros problemas de salud que pueden ser graves y potencialmente mortales.",
+  "Trastornos físicos y mentales causados por el consumo excesivo de alcohol, que pueden incluir problemas de salud mental, daño orgánico, adicción y otros efectos adversos para la salud. El consumo excesivo de alcohol puede ser una causa importante de enfermedad y muerte en todo el mundo.",
+  "Autolesiones intencionadas, que pueden ser suicidas o no suicidas, y pueden incluir una variedad de comportamientos dañinos como cortarse, quemarse, golpearse o intentar intoxicarse. Las autolesiones pueden ser un signo de problemas de salud mental subyacentes que requieren tratamiento.",
+  "Lesiones y muertes causadas por eventos naturales, como terremotos, tsunamis, huracanes y tornados. Las exposiciones a fuerzas de la naturaleza pueden resultar en daños a la propiedad, lesiones personales y pérdidas de vidas humanas.",
+  "Enfermedades infecciosas que causan diarrea y pueden ser mortales en casos graves, especialmente en niños pequeños y personas con sistemas inmunológicos debilitados. Las enfermedades diarreicas pueden ser causadas por bacterias, virus u otros patógenos y pueden propagarse a través del agua contaminada, los alimentos contaminados y otras formas de transmisión.",
+  "La exposición al calor y al frío ambiental se refiere a situaciones en las que las personas están expuestas a temperaturas extremas, ya sea calor intenso o frío extremo. Esto puede provocar deshidratación, golpes de calor, hipotermia y otras condiciones relacionadas con la temperatura que pueden ser peligrosas para la salud e incluso causar la muerte si no se manejan adecuadamente.",
+  "Las neoplasias, también conocidas como tumores, son crecimientos anormales de células que pueden ser benignos o malignos. Las neoplasias malignas, conocidas como cáncer, pueden crecer y propagarse a otras partes del cuerpo, interfiriendo con el funcionamiento normal de los órganos y sistemas y potencialmente causando la muerte si no se tratan adecuadamente.",
+  "Los conflictos y el terrorismo se refieren a situaciones de violencia política, social o religiosa que pueden resultar en conflictos armados, actos de terrorismo y violencia generalizada. Estos eventos pueden causar lesiones graves, muerte, desplazamiento de personas y daños a la infraestructura, contribuyendo significativamente a la mortalidad en áreas afectadas por conflictos y actos terroristas.",
+  "La diabetes mellitus es una enfermedad crónica que afecta la forma en que el cuerpo utiliza la glucosa en sangre, lo que lleva a niveles elevados de azúcar en la sangre. Puede causar una serie de complicaciones graves, como enfermedad cardiovascular, daño nervioso, problemas de visión, insuficiencia renal y complicaciones en los pies, que pueden aumentar el riesgo de mortalidad si no se controlan adecuadamente.",
+  "La enfermedad renal crónica es una afección en la que los riñones no funcionan correctamente durante un período prolongado. Puede ser causada por enfermedades como la diabetes y la hipertensión, y puede llevar a la acumulación de toxinas en el cuerpo, desequilibrios en los electrolitos y otros problemas de salud graves. En etapas avanzadas, la enfermedad renal crónica puede requerir diálisis o trasplante renal para prolongar la vida.",
+  "Las intoxicaciones ocurren cuando una persona ingiere, inhala, absorbe o entra en contacto con sustancias tóxicas en cantidades suficientes como para causar daño. Estas sustancias pueden ser productos químicos, medicamentos, drogas ilegales o sustancias naturales. Dependiendo del tipo y la cantidad de sustancia involucrada, las intoxicaciones pueden variar desde leves hasta potencialmente mortales.",
+  "La desnutrición por proteínas y energía se refiere a una deficiencia crónica de nutrientes esenciales, especialmente proteínas y calorías, en la dieta. Esto puede deberse a una ingesta insuficiente de alimentos nutritivos, problemas de acceso a alimentos adecuados o condiciones médicas que dificultan la absorción de nutrientes. La desnutrición por proteínas y energía puede provocar un debilitamiento grave del cuerpo, comprometer el sistema inmunológico y aumentar el riesgo de enfermedades y mortalidad.",
+  "Las lesiones de tráfico son lesiones o muertes causadas por accidentes de tráfico, como colisiones de vehículos, atropellos de peatones y choques de motocicletas. Estas lesiones pueden ser el resultado de múltiples factores, como la velocidad, el consumo de alcohol, el uso de dispositivos de seguridad inadecuados y el comportamiento imprudente en la carretera. Las lesiones de tráfico son una de las principales causas de muerte en todo el mundo.",
+  "Las enfermedades respiratorias crónicas son afecciones de los pulmones y las vías respiratorias que persisten durante un período prolongado y que pueden empeorar con el tiempo. Ejemplos comunes incluyen la enfermedad pulmonar obstructiva crónica (EPOC), el asma crónica y la fibrosis pulmonar. Estas enfermedades pueden provocar dificultad para respirar, tos crónica, producción de esputo y deterioro progresivo de la función pulmonar, lo que puede resultar en discapacidad y muerte.",
+  "La cirrosis hepática es una enfermedad crónica del hígado caracterizada por la cicatrización irreversible del tejido hepático. Esto puede ser causado por el consumo excesivo de alcohol, hepatitis crónica, enfermedades autoinmunes u otras condiciones. La cirrosis hepática puede provocar una serie de complicaciones graves, como insuficiencia hepática, hipertensión portal y cáncer de hígado, que pueden ser fatales si no se manejan adecuadamente.",
+  "Las enfermedades digestivas afectan el tracto gastrointestinal, incluyendo el esófago, el estómago, el intestino delgado y el intestino grueso. Estas enfermedades pueden incluir trastornos como la enfermedad por reflujo gastroesofágico (ERGE), la enfermedad inflamatoria intestinal (EII), la enfermedad celíaca, la enfermedad del hígado graso no alcohólico (EHGNA) y otras afecciones que afectan la digestión y la absorción de nutrientes. Dependiendo de la gravedad y el tipo de enfermedad, las complicaciones pueden ser graves y potencialmente mortales.",
+  "Los incendios, el calor y las sustancias calientes pueden provocar quemaduras graves y lesiones que pueden ser potencialmente mortales. Los incendios pueden ocurrir en diferentes entornos, como hogares, lugares de trabajo o espacios públicos, y pueden ser causados por diversos factores, como accidentes eléctricos, descuidos con el fuego, fugas de gas o explosiones. Las quemaduras pueden resultar en daño tisular, infecciones, shock y otras complicaciones que pueden poner en peligro la vida.",
+  "La hepatitis aguda es una inflamación del hígado que generalmente es causada por infecciones virales, aunque también puede ser provocada por ciertos medicamentos, toxinas o enfermedades autoinmunes. Los síntomas pueden incluir fatiga, dolor abdominal, ictericia y malestar general. En casos graves, la hepatitis aguda puede provocar insuficiencia hepática aguda, que puede ser potencialmente mortal si no se trata adecuadamente.",
+  "El sarampión es una enfermedad viral altamente contagiosa que se transmite a través del aire cuando una persona infectada tose o estornuda. Los síntomas incluyen fiebre, tos, secreción nasal, erupción cutánea y malestar general. En casos graves, el sarampión puede causar complicaciones como neumonía, encefalitis (inflamación del cerebro) y, en raras ocasiones, muerte, especialmente en personas con sistemas inmunológicos debilitados."
+)
+
+tabla_causas <- tibble(
+  causa = causas,
+  definicion = definiciones_extensas
+)
+
+```
+
+# Mortalidad por causas {data-navmenu="Salud"}
+
+Column {.sidebar data-width=150}
+----------------------------
+
+###
+
+```{r}
+selectInput(
+  "country1", 
+  label = "Selecciona un país:",
+  choices = levels(as.factor(mortalidad_por_causa$Entity)), 
+  selected = "World"
+)
+
+selectInput(
+  "year",
+  label = "Selecciona un año:",
+  choices = seq(1990, 2019),
+  selected = 2019
+)
+
+selectInput(
+  "cause",
+  label = "Selecciona una causa:",
+  choices = colnames(mortalidad_por_causa[-(1:3)]),
+  selected = "Meningitis"
+)
+```
+
+Column
+-------------------------
+
+```{r}
+renderPlotly({
+  mortalidad_por_causa <- mortalidad_por_causa %>%
+    filter(
+      Entity == input$country1 & Year == input$year
+    ) %>%
+    pivot_longer(Meningitis:Measles, names_to = "causas", values_to = "muertes")
+  
+  pal <- c(
+  "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", 
+  "#999999", "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F", "#E5C494",
+  "#B3B3B3", "#8DD3C7", "#FFEDA0", "#BEBADA", "#FB8072", "#80B1D3", "#FDB462", "#B3DE69",
+  "#FCCDE5", "#D9D9D9", "#BC80BD", "#CCEBC5", "#FFED6F", "#1F78B4", "#33A02C", "#6A3D9A"
+)
+  
+  p <- mortalidad_por_causa %>%
+    ggplot(aes(x= fct_reorder(causas, muertes), y = muertes, fill = causas)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    scale_fill_manual(values = pal) +
+    ylab("Muertes") +
+    xlab("Causas") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+  ggplotly(p, tooltip = "y")
+})
+```
+
+```{r, echo=FALSE}
+renderUI({
+  enfermedad <- input$cause  # Asegúrate de que 'cause' es el nombre del input para seleccionar la enfermedad
+  descripcion <- tabla_causas %>% 
+    filter(causa == enfermedad) %>%
+    pull(definicion)  # Asume que 'tabla_causas' tiene una columna 'definicion'
+
+  # Si la descripción está vacía, maneja adecuadamente
+  if (is.na(descripcion) || descripcion == "") {
+    descripcion <- "Información no disponible."
+  }
+
+  htmlOutput <- paste0(
+    '<h1><div class="title-section">', enfermedad, '</div></h1>',
+    '<h4><div class="description-section">', descripcion, '</div></h4>'
+  )
+  
+  HTML(htmlOutput)
+})
+```
+
+
+# Mortalidad por grupos de edad {data-navmenu="Salud"}
+
+```{r}
+mortalidad_por_grupos <- read.csv("annual-death-rates-in-different-age-groups.csv") %>% as_tibble()
+
+mortalidad_por_grupos <- mortalidad_por_grupos %>%
+  rename(
+    Edad_0 = Central.death.rate...Type..period...Sex..both...Age..0,
+    Edad_10 = Central.death.rate...Type..period...Sex..both...Age..10,
+    Edad_25 = Central.death.rate...Type..period...Sex..both...Age..25,
+    Edad_45 = Central.death.rate...Type..period...Sex..both...Age..45,
+    Edad_65 = Central.death.rate...Type..period...Sex..both...Age..65,
+    Edad_80 = Central.death.rate...Type..period...Sex..both...Age..80
+  )
+```
+
+Column {.sidebar}
+---------------------
+
+```{r}
+checkboxGroupInput(
+  "options",
+  label = "Grupos de edad:",
+  choices = colnames(mortalidad_por_grupos[-(1:3)]),
+  selected = colnames(mortalidad_por_grupos[-(1:3)])
+)
+
+sliderInput(
+  "periodo",
+  label = "Selecciona el periodo de tiempo:",
+  min = min(mortalidad_por_grupos$Year),
+  max = max(mortalidad_por_grupos$Year),
+  value = c(1750, 2020),
+  step = 1,
+  dragRange = TRUE
+)
+
+```
+
+Column
+------------------------
+
+###
+
+```{r}
+renderPlotly({
+  mortalidad_por_grupos <- mortalidad_por_grupos %>%
+    select(Entity, Year, input$options) %>%
+    filter(input$periodo[1] <= Year & Year <= input$periodo[2]) %>%
+    group_by(Year) %>%
+    summarise(
+      across(all_of(input$options), sum)
+    )
+  
+  p <- mortalidad_por_grupos %>%
+    pivot_longer(input$options, names_to = "Grupo.Edad", values_to = "Muertes") %>%
+    ggplot(aes(x=Year, y=Muertes, color=Grupo.Edad)) +
+    geom_line()
+  
+  ggplotly(p)
+})
+```
+
+# Análisis por países {data-navmenu="Alimentación"}
+
+```{r}
+subnutricion <- read.csv("prevalence-of-undernourishment.csv") %>% as_tibble()
+
+water <- read.csv("water-and-sanitation.csv") %>% as_tibble()
+
+inseguridad_alimentaria_paises <- read.csv("inseguridad-alimentaria-paises.csv") %>% as_tibble()
+
+obesidad_paises <- read.csv("obesidad-paises.csv") %>% as_tibble()
+
+subnutricion <- subnutricion %>%
+  rename(
+    subnutricion = X2.1.1.Prevalence.of.undernourishment...000000000024000....Value...006121....Percent
+  )
+
+water <- water %>%
+  rename(
+    Uso.de.fuentes.mejoradas.de.agua.potable = Usage.of.improved.drinking.water.sources
+  ) %>%
+  select(
+    Country,
+    Year,
+    Uso.de.fuentes.mejoradas.de.agua.potable
+  )
+
+inseguridad_alimentaria_paises <- inseguridad_alimentaria_paises %>%
+  mutate(Valor = ifelse(Valor == "", NA, Valor)) %>%
+  mutate(Valor = as.numeric(Valor))
+
+inseguridad_alimentaria_paises <- inseguridad_alimentaria_paises %>%
+  select(
+    Código.del.área..ISO3.,
+    Año,
+    Valor
+  )
+
+obesidad_paises <- obesidad_paises %>%
+  select(
+    Código.del.área..ISO3.,
+    Año,
+    Valor
+  )
+
+inseguridad_alimentaria_paises <- inseguridad_alimentaria_paises %>%
+  rename(
+    inseguridad.alimentaria.millones.personas = Valor
+  )
+
+obesidad_paises <- obesidad_paises %>%
+  rename(
+    obesidad.pais.porcentaje = Valor
+  )
+
+años <- strsplit(inseguridad_alimentaria_paises$Año, "-")
+
+año_medio <- sapply(años, function(x){
+  inicio <- as.integer(x[1])
+  fin <- as.integer(x[2])
+  medio <- (inicio + fin) %/% 2
+  return(medio)
+})
+
+inseguridad_alimentaria_paises$Año <- año_medio
+
+life_expectancy2 <- life_expectancy %>%
+  filter(
+    Year >= 2001
+  )
+
+mortality2 <- mortality %>%
+  filter(
+    Year >= 2001
+  )
+
+relacion <- life_expectancy2 %>%
+  left_join(mortality2, by = c("Entity", "Code", "Year"))
+
+relacion <- relacion %>%
+  select(
+    Code,
+    Year,
+    años.esperados,
+    muertes
+  )
+
+sanitation <- subnutricion %>%
+  left_join(water, join_by(Entity == Country, Year == Year))
+
+sanitation <- sanitation %>%
+  left_join(inseguridad_alimentaria_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+sanitation <- sanitation %>%
+  left_join(obesidad_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+sanitation <- sanitation %>%
+  left_join(relacion, join_by(Code == Code, Year == Year))
+
+
+excluded_columns <- c("Entity", "Code", "Year", "años.esperados", "muertes")
+excluded_indices <- which(colnames(sanitation) %in% excluded_columns)
+
+```
+
+Column {.sidebar}
+--------------------------
+
+```{r}
+selectInput(
+  "x", 
+  label = "Categoría:",
+  choices = colnames(sanitation)[-excluded_indices], 
+  selected = colnames(sanitation)[-(1:3)][1]
+)
+
+selectInput(
+  "x_scale", 
+  label = "Escalado de la categoría:",
+  choices = c("none",
+              "sqrt",    
+              "log"
+             ), 
+  selected = "none"
+)
+
+selectInput(
+  "y", 
+  label = "Relación:",
+  choices = colnames(sanitation)[-(1:7)], 
+  selected = colnames(sanitation)[-(1:7)][2]
+)
+
+selectInput(
+  "y_scale", 
+  label = "Escalado de la relación:",
+  choices = c("none",
+              "log"
+             ), 
+  selected = "none"
+)
+```
+
+###
+
+```{r}
+renderTable({
+   tb <- tibble(
+      country = sanitation$Entity,
+      x = sanitation[[which(names(sanitation)==input$x)]],
+      y = sanitation[[which(names(sanitation)==input$y)]]
+    ) 
+    tb <- tb %>% 
+          filter(is.na(x)!=TRUE & is.na(y)!=TRUE )
+  
+  # escalamos los indicadores de acuerdo con los parámetros de escalado   
+  if(input$x_scale=="sqrt") tb$x <- sqrt(tb$x)
+  if(input$x_scale=="log") tb$x <- log(tb$x)  
+  if(input$y_scale=="log") tb$y <- log(tb$y)
+  
+  # Cálculo regresión lineal después del escalado de las variables. 
+  fit <- lm(y ~ x,data=tb)
+ 
+  labels <- c("correlation",
+             "linear regression slope",
+             "linear regression independent") 
+  values <- c(round(cor(tb$x,tb$y),digits = 4),
+              fit$coefficients[2],
+              fit$coefficients[1])
+    
+  tb2 <- tibble( parameter=labels,
+                 value=values)
+  tb2
+ 
+})
+```
+
+Column
+--------------------------------------------------
+
+### Comparación de los parámetros escalados
+
+```{r} 
+renderPlotly({
+  tb <- tibble(
+      country = sanitation$Entity,
+      x = sanitation[[which(names(sanitation)==input$x)]],
+      y = sanitation[[which(names(sanitation)==input$y)]]
+    ) 
+    tb <- tb %>% 
+          filter(is.na(x)!=TRUE & is.na(y)!=TRUE )
+    
+  if(input$x_scale=="sqrt") tb$x <- sqrt(tb$x)
+  if(input$x_scale=="log") tb$x <- log(tb$x)  
+    
+  if(input$y_scale=="log") tb$y <- log(tb$y)  
+  if(input$y_scale=="boxcox"){
+    bc <- boxcox (y ~ x,data=tb)
+    lambda <- round(bc $ x [which.max (bc $ y)],digits=4)
+    if(lambda!=0){
+      tb$y <- tb$y^lambda/lambda
+    } else {
+      tb$y <- log(tb$y)
+    }
+  }
+  
+  fit <- lm(y ~ x,data=tb)
+  a <- fit$coefficients[2]
+  b <- fit$coefficients[1]
+  p <- tb %>%
+        ggplot(aes(x,y,color=country)) + 
+        geom_point() +
+        theme(legend.position = "none") +
+        labs(x= input$x, y= input$y)
+  
+  xmin <- layer_scales(p)$x$get_limits()[1]
+  xmax <- layer_scales(p)$x$get_limits()[2]
+  ymin <- layer_scales(p)$y$get_limits()[1]
+  ymax <- layer_scales(p)$y$get_limits()[2]
+  
+  if(a*xmin+b<ymin) xmin <- (ymin-b)/a
+  if(a*xmin+b>ymax) xmin <- (ymax-b)/a
+  if(a*xmax+b<ymin) xmax <- (ymin-b)/a
+  if(a*xmax+b>ymax) xmax <- (ymax-b)/a
+  
+  df <- data.frame(x1 = xmin, x2 = xmax, y1 = a*xmin+b, y2 = a*xmax+b)
+  
+  p2 <- p +
+        geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2, color = "blue"), data = df)
+  ggplotly(p2) 
+  
+})
+```
+
+Column {.tabset data-width=400}
+--------------------------------------------------
+
+### Tabla de valores
+
+```{r}
+renderTable({
+  tibble(
+      country = sanitation$Entity,
+       indicator1 = sanitation[[which(names(sanitation)==input$x)]],
+       indicator2 = sanitation[[which(names(sanitation)==input$y)]]
+    ) %>% 
+      filter(is.na(indicator1)!=TRUE & is.na(indicator2)!=TRUE ) %>%
+      arrange(desc(indicator1)) %>%
+      #setNames(c("country",paste("highest_",input$x),input$y))  %>%
+      head(300)
+})
+```
+
+### Representación de valores
+
+```{r}
+renderPlotly({
+  
+  data <- tibble(
+    country = sanitation$Entity,
+       indicator1 = sanitation[[which(names(sanitation)==input$x)]],
+       indicator2 = sanitation[[which(names(sanitation)==input$y)]],
+       year = sanitation[[which(names(sanitation)=="Year")]]
+  )
+  
+  data <- data %>% 
+    filter(!is.na(indicator1)) %>% 
+    arrange(desc(indicator1))
+  
+  top_countries <- unique(data$country)[1:5]
+  
+  data_for_boxplot <- data %>% 
+    filter(country %in% top_countries)
+  
+  p <- data_for_boxplot %>%
+    ggplot(aes(x=country, y=indicator1, fill = country, label = year)) +
+    geom_boxplot(outlier.shape = NA) +
+    geom_jitter(shape=16, position=position_jitter(0.2))+
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  ggplotly(p)
+
+})
+```
+
+
+Comparación
+========================
+
+```{r}
+life_expectancy_gdp_pc <- read.csv("life-expectancy-vs-gdp-per-capita.csv") %>% as_tibble()
+
+life_exp_inv_public_heatlh <- read.csv("life-expectancy-vs-healthcare-expenditure.csv") %>% as_tibble()
+
+life_expectancy <- read.csv("life-expectancy.csv") %>% as_tibble()
+
+mortality <- read.csv("age-standardized-deaths-from-all-causes.csv") %>% as_tibble()
+
+life_exp_inv_public_heatlh <- life_exp_inv_public_heatlh %>%
+  rename(
+    inversion = Current.health.expenditure.per.capita..PPP..current.international...
+  )
+
+life_expectancy <- life_expectancy %>%
+  rename(
+    years_expected = Period.life.expectancy.at.birth...Sex..all...Age..0
+  )
+
+mortality <- mortality %>%
+  rename(
+    deaths = Deaths...All.causes...Sex..Both...Age..Age.standardized..Rate.
+  )
+
+life_expectancy_gdp_pc_select <- life_expectancy_gdp_pc %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    GDP.per.capita
+  )
+
+life_inv_health_select <- life_exp_inv_public_heatlh %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    inversion
+  )
+
+total <- life_expectancy_gdp_pc_select %>%
+  as_tibble() %>%
+  left_join(life_inv_health_select, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  left_join(life_expectancy, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  left_join(mortality, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total <- total %>%
+  filter(Year >= 2000)
+```
+
+```{r}
+countries <- levels(as.factor(total$Entity))
+categoria1 <- c("GDP.per.capita", "inversion")
+categoria2 <- c("years_expected", "deaths")
+years1 <- levels(as.factor(total$Year))
+```
+
+
+Column {.sidebar data-width=230}
+--------------------------------------------------
+
+```{r}
+selectInput(
+  "country.1", 
+  label = "Country 1:", # etiqueta del campo para presentar en el cuadro de mando
+  choices = countries, # vector con las opciones para seleccionar 
+  selected = "Spain" # la opción seleccionada por defecto 
+)
+```
+
+```{r}
+selectInput(
+  "country2", 
+  label = "Country 2:",
+  choices = countries, 
+  selected = "Germany"
+)
+```
+
+```{r}
+selectInput(
+  "category1", 
+  label = "Categoría 1:", # etiqueta del campo para presentar en el cuadro de mando
+  choices = categoria1, # vector con las opciones para seleccionar 
+  selected = "GDP.per.capita" # la opción seleccionada por defecto 
+)
+```
+
+```{r}
+selectInput(
+  "category2", 
+  label = "Categoría 2:", # etiqueta del campo para presentar en el cuadro de mando
+  choices = categoria2, # vector con las opciones para seleccionar 
+  selected = "years_expected" # la opción seleccionada por defecto 
+)
+```
+
+```{r}
+selectInput(
+  "yearinit", 
+  label = "Start year:",
+  choices = years1, 
+  selected = "2012"
+)
+```
+
+```{r}
+selectInput(
+  "yearend", 
+  label = "End year:",
+  choices = years1, 
+  selected = "2019"
+)
+```
+
+Column
+--------------------------------------------------
+
+###
+
+```{r}
+highcharter::renderHighchart({
+if(input$category1=="GDP.per.capita"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  GDP.per.capita = total$GDP.per.capita,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country.1) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = GDP.per.capita, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("green"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  inversion = total$inversion,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country.1) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = inversion, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("teal"))
+}
+})
+```
+
+###
+
+```{r}
+highcharter::renderHighchart({
+if(input$category1=="GDP.per.capita"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  GDP.per.capita = total$GDP.per.capita,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country2) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = GDP.per.capita, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("green"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  inversion = total$inversion,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country2) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = inversion, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("teal"))
+}
+})
+```
+
+Column
+--------------------------------------------------
+
+###
+
+```{r}
+highcharter::renderHighchart({
+if(input$category2=="years_expected"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  years_expected = total$years_expected,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country.1) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = years_expected, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("lightpink"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  deaths = total$deaths,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country.1) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = deaths, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("red"))
+}
+})
+```
+
+###
+
+```{r}
+highcharter::renderHighchart({
+if(input$category2=="years_expected"){
+ tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  years_expected = total$years_expected,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country2) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = years_expected, group = Entity)) %>%
+  highcharter::hc_colors(colors = c("lightpink"))
+} else{
+  tsibble::tsibble( # Creación de la serie temporal que se dibujará con hchart
+  Year = total$Year,
+  Entity = total$Entity,
+  deaths = total$deaths,
+  index = Year,
+  key = Entity) %>%
+    filter(Entity == input$country2) %>%
+    filter(Year >= input$yearinit & Year <= input$yearend) %>%
+    highcharter::hchart("line",hcaes(x = Year, y = deaths, group = Entity)) %>%
+    highcharter::hc_colors(colors = c("red"))
+}
+})
+```
+
+
+Análisis de atributos
+=============================
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+life_expectancy3 <- life_expectancy %>%
+  filter(Year >= 2000)
+
+mortality3 <- mortality %>%
+  filter(Year >= 2000)
+
+inversion_salud <- life_exp_inv_public_heatlh %>%
+  filter(Year >= 2000) %>%
+  rename(
+    inversion.en.salud.publica = inversion
+  ) %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    inversion.en.salud.publica
+  )
+
+gdp.per.capita <- life_expectancy_gdp_pc %>%
+  filter(Year >= 2000) %>%
+  select(
+    Entity,
+    Code,
+    Year,
+    GDP.per.capita
+  )
+
+total1 <- life_expectancy3 %>%
+  left_join(mortality3, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(subnutricion, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(inseguridad_alimentaria_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+total1 <- total1 %>%
+  left_join(inversion_salud, join_by(Code == Code, Year == Year, Entity == Entity))
+
+total1 <- total1 %>%
+  left_join(obesidad_paises, join_by(Code == Código.del.área..ISO3., Year == Año))
+
+total1 <- total1 %>%
+  left_join(water, join_by(Entity == Country, Year == Year))
+
+total1 <- total1 %>%
+  left_join(gdp.per.capita, join_by(Entity == Entity, Code == Code, Year == Year))
+
+```
+
+Column
+-------------------
+
+### Matriz de correlación
+
+```{r, fig.asp=2}
+renderHighchart({
+  total1 %>%
+    select(-Entity, -Code, -Year) %>%
+    cor(use = 'complete.obs') %>%
+    hchart()
+})
+```
+
+### Componentes Principales
+
+```{r, fig.asp=2}
+total11 <- total1 %>%
+  group_by(Entity) %>%
+  summarise_at(vars(-Code, -Year), mean, na.rm = TRUE) %>%
+  column_to_rownames(var="Entity")
+
+total11 <- na.omit(total11)
+
+pca <- prcomp(total11, scale = TRUE)
+```
+
+```{r}
+renderPlotly({
+  p <- tibble(
+    label=paste("PC",1:length(pca$sdev)),
+    varPercent = pca$sdev^2/sum(pca$sdev^2) * 100
+) %>%
+  ggplot(aes(x=label,y=varPercent)) + 
+    geom_bar(stat = "identity") +
+    labs(x= "Componentes Principales", 
+         y= "Porcentaje varianza explicada")
+ggplotly(p)
+})
+```
+
+Column 
+-----------------
+
+### Diagrama de dispersión
+
+```{r}
+renderHighchart({
+  hchart(pca)
+})
+```
+
+
+
+
+
+
