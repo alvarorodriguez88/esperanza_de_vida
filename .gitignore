@@ -1,0 +1,11 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Archivos temporales de RMarkdown
+*_cache/
+*_files/
+
+.DS_Store
